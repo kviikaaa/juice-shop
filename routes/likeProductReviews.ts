@@ -21,6 +21,11 @@ export function likeProductReviews () {
       return res.status(401).json({ error: 'Unauthorized' })
     }
 
+    if (typeof rawId !== 'string' || !/^[a-fA-F0-9]{24}$/.test(rawId)) {
+      return res.status(400).json({ error: 'Invalid id format' })
+    }
+    const id = rawId
+    
     try {
       const review = await db.reviewsCollection.findOne({ _id: id })
       if (!review) {
