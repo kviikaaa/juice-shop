@@ -265,6 +265,9 @@
     "ts-node": "^10.9.2",
     "typescript": "~5.3.3"
   },
+  "overrides": {
+    "vm2": "3.9.18"
+  },
   "engines": {
     "node": "20 - 24"
   },
