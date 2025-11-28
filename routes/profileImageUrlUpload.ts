@@ -20,29 +20,64 @@ export function profileImageUrlUpload () {
       if (url.match(/(.)*solve\/challenges\/server-side(.)*/) !== null) req.app.locals.abused_ssrf_bug = true
       const loggedInUser = security.authenticatedUsers.get(req.cookies.token)
       if (loggedInUser) {
-        try {
-          const response = await fetch(url)
-          if (!response.ok || !response.body) {
-            throw new Error('url returned a non-OK status code or an empty body')
-          }
-          const ext = ['jpg', 'jpeg', 'png', 'svg', 'gif'].includes(url.split('.').slice(-1)[0].toLowerCase()) ? url.split('.').slice(-1)[0].toLowerCase() : 'jpg'
-          const fileStream = fs.createWriteStream(`frontend/dist/frontend/assets/public/images/uploads/${loggedInUser.data.id}.${ext}`, { flags: 'w' })
-          await finished(Readable.fromWeb(response.body as any).pipe(fileStream))
-          await UserModel.findByPk(loggedInUser.data.id).then(async (user: UserModel | null) => { return await user?.update({ profileImage: `/assets/public/images/uploads/${loggedInUser.data.id}.${ext}` }) }).catch((error: Error) => { next(error) })
-        } catch (error) {
-          try {
-            const user = await UserModel.findByPk(loggedInUser.data.id)
-            await user?.update({ profileImage: url })
-            logger.warn(`Error retrieving user profile image: ${utils.getErrorMessage(error)}; using image link directly`)
-          } catch (error) {
-            next(error)
-            return
-          }
-        }
-      } else {
-        next(new Error('Blocked illegal activity by ' + req.socket.remoteAddress))
-        return
-      }
+  try {
+    const response = await fetch(url)
+    if (!response.ok || !response.body) {
+      throw new Error('url returned a non-OK status code or an empty body')
+    }
+
+    const extList = ['jpg', 'jpeg', 'png', 'svg', 'gif']
+    const rawExt = url.split('.').slice(-1)[0].toLowerCase()
+    const ext = extList.includes(rawExt) ? rawExt : 'jpg'
+
+    let userId = String(loggedInUser.data.id)
+    userId = userId.replace(/[^a-zA-Z0-9_-]/g, '')
+    if (!userId) {
+      throw new Error('Invalid user id')
+    }
+
+    const uploadDir = path.join(
+      __dirname,
+      '..',
+      'frontend',
+      'dist',
+      'frontend',
+      'assets',
+      'public',
+      'images',
+      'uploads'
+    )
+    const fileName = `${userId}.${ext}`
+    const filePath = path.join(uploadDir, fileName)
+
+    const fileStream = fs.createWriteStream(filePath, { flags: 'w' })
+
+    await finished(Readable.fromWeb(response.body as any).pipe(fileStream))
+
+    await UserModel.findByPk(loggedInUser.data.id)
+      .then(async (user: UserModel | null) => {
+        return await user?.update({
+          profileImage: `/assets/public/images/uploads/${fileName}`
+        })
+      })
+      .catch((error: Error) => { next(error) })
+  } catch (error) {
+    try {
+      const user = await UserModel.findByPk(loggedInUser.data.id)
+      await user?.update({ profileImage: url })
+      logger.warn(
+        `Error retrieving user profile image: ${utils.getErrorMessage(error)}; using image link directly`
+      )
+    } catch (error) {
+      next(error)
+      return
+    }
+  }
+} else {
+  next(new Error('Blocked illegal activity by ' + req.socket.remoteAddress))
+  return
+}
+
     }
     res.location(process.env.BASE_PATH + '/profile')
     res.redirect(process.env.BASE_PATH + '/profile')
