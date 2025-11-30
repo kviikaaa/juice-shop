@@ -152,7 +152,7 @@
     "html-entities": "^1.4.0",
     "i18n": "^0.14.0",
     "js-yaml": "^3.14.0",
-    "jsonwebtoken": "^5.0.0",
+    "jsonwebtoken": "^7.4.1",
     "jssha": "^3.3.1",
     "median": "^0.0.2",
     "morgan": "^1.10.0",
